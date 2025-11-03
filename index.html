@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OKIENAK // Ultimate Secure Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0f;
+            --primary-glow: rgba(139, 92, 246, 0.4);
+            --secondary-glow: rgba(59, 130, 246, 0.3);
+            --glass-bg: rgba(23, 23, 33, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .glass-pane {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glowing-card {
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glowing-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 0.8rem; /* Match card's border-radius */
+            padding: 1px;
+            background: radial-gradient(400px at var(--x) var(--y), var(--primary-glow), transparent 60%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .glowing-card:hover:before {
+            opacity: 1;
+        }
+        .input-style {
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .input-style:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+        }
+        /* Custom Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-scaleIn { animation: scaleIn 0.3s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeInUp { animation: fadeInUp 0.5s ease-out forwards; }
+    </style>
+    
+    <!-- React & Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "react-router-dom": "https://esm.sh/react-router-dom@6.22.3",
+            "react-markdown": "https://esm.sh/react-markdown@9.0.1",
+            "@google/genai": "https://esm.sh/@google/generative-ai"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div id="root"></div>
+
+    <!-- Particle.js for background effect -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            "particles": { "number": { "value": 60, "density": { "enable": true, "value_area": 800 } }, "color": { "value": "#8b5cf6" }, "shape": { "type": "circle", "stroke": { "width": 0, "color": "#000000" }, }, "opacity": { "value": 0.5, "random": true, }, "size": { "value": 3, "random": true, }, "line_linked": { "enable": true, "distance": 150, "color": "#4f46e5", "opacity": 0.2, "width": 1 }, "move": { "enable": true, "speed": 1, "direction": "none", "random": false, "straight": false, "out_mode": "out", "bounce": false, } }, "interactivity": { "detect_on": "canvas", "events": { "onhover": { "enable": true, "mode": "grab" }, "onclick": { "enable": true, "mode": "push" }, "resize": true }, "modes": { "grab": { "distance": 140, "line_linked": { "opacity": 0.5 } }, "bubble": { "distance": 400, "size": 40, "duration": 2, "opacity": 8, "speed": 3 }, "repulse": { "distance": 200, "duration": 0.4 }, "push": { "particles_nb": 4 }, "remove": { "particles_nb": 2 } } }, "retina_detect": true
+        });
+    </script>
+    
+    <!-- Main React Application Script -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from 'react';
+        import ReactDOM from 'react-dom/client';
+        import { HashRouter, Routes, Route, useParams, useNavigate, Link } from 'react-router-dom';
+        import { GoogleGenerativeAI } from "@google/genai";
+        import ReactMarkdown from 'react-markdown';
+
+        // --- SECTION: APPLICATION CORE & SETUP ---
+        
+        const ADMIN_EMAIL = "cidmomo19@gmail.com";
+        const ADMIN_DEFAULT_PASS = "ipulapik999#";
+        // API Key provided by the user is integrated here.
+        window.API_KEY = "AIzaSyBmD-XSVxCGznnwXmY5JM74wVWPUW5LVpY";
+
+        // --- SECTION: AI SERVICE (AETHERIUS) ---
+        
+        const generateNoteContent = async (prompt) => {
+            const API_KEY = window.API_KEY;
+            if (!API_KEY) {
+                 return "## Fitur AI Dinonaktifkan\n\nKunci API Gemini tidak ditemukan. Harap konfigurasikan di lingkungan Anda.";
+            }
+
+            try {
+                const ai = new GoogleGenerativeAI({ apiKey: API_KEY });
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: `Anda adalah "Aetherius", sebuah Strategic Intelligence yang terintegrasi dalam aplikasi catatan aman OKIENAK. Misi Anda adalah mengubah ide mentah pengguna menjadi dokumen strategi yang cerdas, terstruktur, dan visioner.
+
+                    **ATURAN UTAMA & WAJIB DIPATUHI:**
+                    1.  **IDENTITAS:** Anda adalah Aetherius. Anda analitis, cerdas, dan to-the-point.
+                    2.  **BAHASA:** Selalu gunakan Bahasa Indonesia yang profesional, lugas, dan berbobot.
+                    3.  **FORMAT JUDUL OTOMATIS (SANGAT PENTING):** Baris PERTAMA dari respons Anda **HARUS** selalu berupa judul yang relevan, dalam format Markdown H2. Contoh: \`## Analisis Strategi Pemasaran Digital\`. Ini akan diekstrak otomatis.
+                    4.  **STRUKTUR OUTPUT PROFESIONAL:** Selalu susun respons Anda dalam format berikut:
+                        *   **Sinopsis:** 1-2 kalimat ringkasan cerdas dari ide utama.
+                        *   **Wawasan Kunci:** Gunakan daftar poin (\`-\`) untuk 3-5 wawasan paling penting atau komponen utama dari topik tersebut.
+                        *   **Rekomendasi Strategis:** Gunakan daftar poin (\`-\`) untuk memberikan langkah-langkah konkret atau implikasi ke depan yang bisa diambil pengguna.
+                    5.  **KUALITAS KONTEN:** Jangan hanya menjawab. Berikan analisis, konteks, dan nilai tambah yang signifikan. Ubah ide simpel menjadi sebuah kerangka kerja strategis.
+                    6.  **FOKUS:** Langsung ke konten. Tidak ada basa-basi.
+
+                    **PROMPT PENGGUNA SAAT INI:**
+                    "${prompt}"
+
+                    **JAWABAN ANDA (WAJIB DIMULAI DENGAN '## Judul...' DAN MENGIKUTI STRUKTUR DI ATAS):**`,
+                });
+                return response.text;
+            } catch (error) {
+                console.error("Error generating content with Gemini:", error);
+                if (error.message.includes('API key not valid')) {
+                    return "## Kunci API Tidak Valid\n\nKunci API Gemini yang Anda berikan tidak valid. Silakan periksa kembali.";
+                }
+                return "## Terjadi Kesalahan\n\nMaaf, terjadi kesalahan saat menghubungi Aetherius. Silakan coba lagi nanti.";
+            }
+        };
+
+        // --- SECTION: REACT HOOKS & CONTEXT ---
+
+        const useLocalStorage = (key, initialValue) => {
+            const [storedValue, setStoredValue] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) { return initialValue; }
+            });
+
+            const setValue = useCallback((value) => {
+                try {
+                    const valueToStore = value instanceof Function ? value(storedValue) : value;
+                    setStoredValue(valueToStore);
+                    window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                } catch (error) {
+                    console.error(`Error setting localStorage key “${key}”:`, error);
+                }
+            }, [key, storedValue]);
+            return [storedValue, setValue];
+        };
+
+        const ToastContext = createContext(null);
+        const useToast = () => useContext(ToastContext);
+
+        // --- SECTION: SVG ICONS ---
+        
+        const Icon = ({ children, className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>;
+        const LoaderIcon = (props) => <Icon {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></Icon>;
+        const EditIcon = (props) => <Icon {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></Icon>;
+        const ShareIcon = (props) => <Icon {...props}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></Icon>;
+        const TrashIcon = (props) => <Icon {...props}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></Icon>;
+        const EyeIcon = (props) => <Icon {...props}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></Icon>;
+        const EyeOffIcon = (props) => <Icon {...props}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></Icon>;
+        const LogOutIcon = (props) => <Icon {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></Icon>;
+        const LockIcon = (props) => <Icon {...props}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
+        const CopyIcon = (props) => <Icon {...props}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></Icon>;
+        const CheckIcon = (props) => <Icon {...props}><polyline points="20 6 9 17 4 12"/></Icon>;
+        const XIcon = (props) => <Icon {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></Icon>;
+        const SparklesIcon = (props) => <Icon {...props}><path d="m12 3-1.9 5.8-5.8 1.9 5.8 1.9L12 21l1.9-5.8 5.8-1.9-5.8-1.9L12 3z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></Icon>;
+        const PlusIcon = (props) => <Icon {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></Icon>;
+        const ChevronLeftIcon = (props) => <Icon {...props}><polyline points="15 18 9 12 15 6"></polyline></Icon>;
+
+        // --- SECTION: UI COMPONENTS ---
+
+        const ToastProvider = ({ children }) => {
+            const [toasts, setToasts] = useState([]);
+
+            const showToast = useCallback((message, type = 'info') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
+                setTimeout(() => setToasts(prev => prev.filter(toast => toast.id !== id)), 4000);
+            }, []);
+
+            const toastStyles = { success: 'from-green-500 to-emerald-600', error: 'from-red-500 to-rose-600', info: 'from-sky-500 to-indigo-600' };
+            return (
+                <ToastContext.Provider value={{ showToast }}>
+                    {children}
+                    <div className="fixed top-5 right-5 z-[100] flex flex-col gap-3">
+                        {toasts.map(toast => (
+                            <div key={toast.id} className={`flex items-center gap-3 text-white px-4 py-3 rounded-lg shadow-2xl animate-fadeIn bg-gradient-to-r ${toastStyles[toast.type]}`}>
+                                <p>{toast.message}</p>
+                            </div>
+                        ))}
+                    </div>
+                </ToastContext.Provider>
+            );
+        };
+        
+        const PasswordInput = (props) => {
+            const [show, setShow] = useState(false);
+            return (
+                <div className="relative w-full">
+                    <input {...props} type={show ? 'text' : 'password'} className="w-full px-4 py-3 rounded-lg input-style placeholder:text-gray-500" />
+                    <button type="button" onClick={() => setShow(!show)} className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-white">
+                        {show ? <EyeOffIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                    </button>
+                </div>
+            );
+        };
+        
+        const Modal = ({ isOpen, onClose, children }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+                    <div className="glass-pane rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scaleIn" onClick={e => e.stopPropagation()}>
+                        {children}
+                    </div>
+                </div>
+            );
+        };
+        
+        const NoteForm = ({ allUsers, setAllUsers, currentUser, setCurrentUser, editingNote, closeModal }) => {
+            const { showToast } = useToast();
+            const [title, setTitle] = useState('');
+            const [content, setContent] = useState('');
+            const [syntax, setSyntax] = useState('text');
+            const [expiry, setExpiry] = useState('never');
+            const [password, setPassword] = useState('');
+            const [aiPrompt, setAiPrompt] = useState('');
+            const [isGenerating, setIsGenerating] = useState(false);
+            
+            const getExpiryTimestamp = (option) => {
+                const now = new Date();
+                switch (option) {
+                    case '1h': return now.setHours(now.getHours() + 1);
+                    case '1d': return now.setDate(now.getDate() + 1);
+                    case '1w': return now.setDate(now.getDate() + 7);
+                    case '1m': return now.setMonth(now.getMonth() + 1);
+                    default: return null;
+                }
+            };
+
+            const getExpiryOptionFromTimestamp = (timestamp) => {
+                if (!timestamp) return 'never';
+                const diff = timestamp - Date.now();
+                if (diff <= 0) return 'never';
+                const hour = 3600000, day = hour * 24, week = day * 7, month = day * 30;
+                if (diff < day) return '1h';
+                if (diff < week) return '1d';
+                if (diff < month) return '1w';
+                return '1m';
+            };
+
+            useEffect(() => {
+                if (editingNote) {
+                    setTitle(editingNote.title);
+                    setContent(editingNote.content);
+                    setSyntax(editingNote.syntax);
+                    setExpiry(getExpiryOptionFromTimestamp(editingNote.expiry));
+                } else {
+                    setTitle(''); setContent(''); setSyntax('text'); setExpiry('never');
+                }
+                setPassword(''); setAiPrompt('');
+            }, [editingNote]);
+
+            const handleGenerateContent = async () => {
+                if (!aiPrompt.trim()) return showToast('Silakan masukkan prompt untuk Aetherius.', 'info');
+                if (!window.API_KEY) return showToast('Kunci API belum diatur. Fitur AI dinonaktifkan.', 'error');
+                
+                setIsGenerating(true);
+                setContent('Aetherius sedang merumuskan strategi...');
+                try {
+                    const rawContent = await generateNoteContent(aiPrompt);
+                    const lines = rawContent.split('\n');
+                    const potentialTitle = lines[0].startsWith('## ') ? lines[0].substring(3).trim() : '';
+                    const finalContent = potentialTitle ? lines.slice(1).join('\n').trim() : rawContent;
+                    
+                    if (potentialTitle) setTitle(potentialTitle);
+                    setContent(finalContent);
+                    showToast('Strategi berhasil dirumuskan oleh Aetherius!', 'success');
+                } catch (error) {
+                    setContent('');
+                    showToast('Gagal merumuskan strategi.', 'error');
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!content.trim() || content.includes('merumuskan strategi')) return showToast("Konten tidak boleh kosong!", 'error');
+
+                const updatedUsers = allUsers.map(user => {
+                    if (user.email === currentUser.email) {
+                        const newNote = {
+                            id: editingNote?.id || crypto.randomUUID(),
+                            title: title.trim() || "Catatan Tanpa Judul",
+                            content: content.trim(),
+                            syntax: syntax,
+                            expiry: getExpiryTimestamp(expiry),
+                            password: password.trim() ? password.trim() : (editingNote ? editingNote.password : null),
+                            createdAt: editingNote?.createdAt || Date.now(),
+                        };
+                        const notes = editingNote ? user.notes.map(n => n.id === editingNote.id ? newNote : n) : [newNote, ...user.notes];
+                        return { ...user, notes: notes.sort((a,b) => b.createdAt - a.createdAt) };
+                    }
+                    return user;
+                });
+                const updatedCurrentUser = updatedUsers.find(u => u.email === currentUser.email);
+                setAllUsers(updatedUsers);
+                setCurrentUser(updatedCurrentUser);
+                showToast(editingNote ? 'Catatan berhasil diperbarui!' : 'Catatan berhasil disimpan!', 'success');
+                closeModal();
+            };
+            
+            const btnPrimary = "bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-violet-500 transition transform active:scale-95 shadow-lg shadow-violet-900/40";
+            const btnSecondary = "bg-gray-500/20 text-gray-200 font-bold py-3 px-6 rounded-lg hover:bg-gray-500/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-gray-400 transition active:scale-95";
+
+            return (
+                <div className="p-8 text-white">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold">{editingNote ? `Edit Catatan` : 'Buat Catatan Baru'}</h2>
+                        <button onClick={closeModal} className="p-2 text-gray-400 hover:text-white transition duration-200 rounded-full hover:bg-white/10"><XIcon className="w-6 h-6"/></button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <input type="text" placeholder="Judul Catatan" value={title} onChange={e => setTitle(e.target.value)} className="w-full px-4 py-3 rounded-lg input-style placeholder:text-gray-500" />
+                        
+                        <div className="bg-black/20 border border-violet-500/30 rounded-lg p-4 space-y-3">
+                            <div className="flex items-center gap-2"><SparklesIcon className="w-5 h-5 text-violet-400"/><h3 className="text-md font-semibold text-violet-300">Strategic Intelligence: Aetherius</h3></div>
+                            <textarea placeholder="Minta Aetherius untuk merumuskan strategi..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} className="w-full px-4 py-3 rounded-lg input-style placeholder:text-gray-500 min-h-[60px]" rows={2} disabled={isGenerating}/>
+                            {!window.API_KEY && <p className="text-xs text-amber-400">Kunci API belum diatur. Fitur AI tidak akan berfungsi.</p>}
+                            <button type="button" onClick={handleGenerateContent} disabled={isGenerating || !window.API_KEY} className="flex w-full justify-center items-center gap-2 bg-violet-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-violet-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isGenerating ? <><LoaderIcon className="w-5 h-5 animate-spin"/> <span>Merumuskan...</span></> : <> <SparklesIcon className="w-5 h-5"/> <span>Jalankan Aetherius</span></>}
+                            </button>
+                        </div>
+
+                        <textarea placeholder="Ketik konten Anda di sini..." value={content} onChange={e => setContent(e.target.value)} className="w-full px-4 py-3 rounded-lg input-style placeholder:text-gray-500 min-h-[180px]" required/>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <select value={syntax} onChange={e => setSyntax(e.target.value)} className="w-full px-4 py-3 rounded-lg input-style appearance-none">
+                                <option value="text">Tipe: Teks Biasa</option><option value="code">Tipe: Kode</option><option value="link">Tipe: Hyperlink</option>
+                            </select>
+                            <select value={expiry} onChange={e => setExpiry(e.target.value)} className="w-full px-4 py-3 rounded-lg input-style appearance-none">
+                                <option value="never">Kadaluarsa: Tidak Pernah</option><option value="1h">Kadaluarsa: 1 Jam</option><option value="1d">Kadaluarsa: 1 Hari</option><option value="1w">Kadaluarsa: 1 Minggu</option><option value="1m">Kadaluarsa: 1 Bulan</option>
+                            </select>
+                        </div>
+                        
+                        <PasswordInput placeholder="Kata Sandi (Biarkan kosong jika tidak ingin mengubah)" value={password} onChange={e => setPassword(e.target.value)} />
+                        <div className="flex items-center gap-4 pt-4 border-t border-white/20">
+                            <button type="button" onClick={closeModal} className={btnSecondary}>Batal</button>
+                            <button type="submit" className={`${btnPrimary} flex-1`}>{editingNote ? 'Simpan Perubahan' : 'Simpan Catatan'}</button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+        
+        const NoteCard = ({ note, onEdit, onDelete, onShare }) => {
+            const cardRef = useRef(null);
+
+            useEffect(() => {
+                const card = cardRef.current;
+                if (!card) return;
+
+                const handleMouseMove = (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    card.style.setProperty('--x', `${x}px`);
+                    card.style.setProperty('--y', `${y}px`);
+                };
+
+                card.addEventListener('mousemove', handleMouseMove);
+                return () => card.removeEventListener('mousemove', handleMouseMove);
+            }, []);
+
+            const statusColor = note.password ? 'border-amber-500/50' : 'border-violet-500/50';
+
+            return (
+                <div ref={cardRef} className={`animate-fadeInUp glass-pane glowing-card rounded-xl p-5 border-l-4 ${statusColor} flex flex-col justify-between`}>
+                    <div>
+                        <h3 className="text-lg font-bold text-white truncate mb-2">{note.title}</h3>
+                        <div className="flex flex-wrap gap-2 text-xs text-gray-400 mb-4">
+                            {note.password && <span className="bg-amber-500/20 text-amber-300 px-2 py-1 rounded-full flex items-center gap-1"><LockIcon className="w-3 h-3"/> Terkunci</span>}
+                            <span className="bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">{new Date(note.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-gray-300 text-sm break-words line-clamp-3">{note.content}</p>
+                    </div>
+                    <div className="flex items-center gap-1 mt-5 pt-4 border-t border-white/10">
+                        <button onClick={() => onEdit(note)} title="Edit" className="p-2 text-gray-400 hover:text-white transition duration-200 rounded-full hover:bg-white/10"><EditIcon className="w-5 h-5"/></button>
+                        <button onClick={() => onShare(note)} title="Bagikan" className="p-2 text-gray-400 hover:text-white transition duration-200 rounded-full hover:bg-white/10"><ShareIcon className="w-5 h-5"/></button>
+                        <div className="flex-grow"></div>
+                        <button onClick={() => onDelete(note.id)} title="Hapus" className="p-2 text-gray-400 hover:text-red-400 transition duration-200 rounded-full hover:bg-red-500/10"><TrashIcon className="w-5 h-5"/></button>
+                    </div>
+                </div>
+            );
+        };
+        
+        const DashboardPage = ({ allUsers, setAllUsers, currentUser, setCurrentUser, logout }) => {
+            const [editingNote, setEditingNote] = useState(null);
+            const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+            const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+            const [shareLink, setShareLink] = useState('');
+            const [copied, setCopied] = useState(false);
+            const { showToast } = useToast();
+
+            useEffect(() => {
+                const updatedUsers = allUsers.map(u => ({ ...u, notes: u.notes.filter(n => !(n.expiry && n.expiry <= Date.now())) }));
+                if (JSON.stringify(updatedUsers) !== JSON.stringify(allUsers)) {
+                    setAllUsers(updatedUsers);
+                }
+                const updatedCurrentUser = updatedUsers.find(u => u.email === currentUser.email);
+                if (updatedCurrentUser) {
+                    setCurrentUser(updatedCurrentUser);
+                } else {
+                    logout(); // Should not happen, but for safety
+                }
+            }, []);
+
+            const openCreateModal = () => { setEditingNote(null); setIsNoteModalOpen(true); };
+            const openEditModal = (note) => { setEditingNote(note); setIsNoteModalOpen(true); };
+            const closeModal = () => { setIsNoteModalOpen(false); setEditingNote(null); };
+
+            const handleShare = (note) => {
+                const shareableData = { title: note.title, content: note.content, syntax: note.syntax, createdAt: note.createdAt };
+                const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(shareableData))));
+                const link = `${window.location.origin}${window.location.pathname}#/view/${encoded}`;
+                setShareLink(link);
+                setIsShareModalOpen(true);
+                setCopied(false);
+            };
+            
+            const handleCopy = () => {
+                navigator.clipboard.writeText(shareLink);
+                setCopied(true);
+                showToast("Tautan berhasil disalin!", 'success');
+            };
+
+            const handleDeleteNote = (noteId) => {
+                if (window.confirm("Yakin ingin menghapus catatan ini?")) {
+                    const updatedUsers = allUsers.map(u => u.email === currentUser.email ? { ...u, notes: u.notes.filter(n => n.id !== noteId) } : u);
+                    setAllUsers(updatedUsers);
+                    setCurrentUser(updatedUsers.find(u => u.email === currentUser.email));
+                    showToast("Catatan dihapus.", "info");
+                }
+            };
+            
+            const btnPrimary = "bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-violet-500 transition transform active:scale-95 shadow-lg shadow-violet-900/40";
+            const iconButton = "p-2 text-gray-400 hover:text-white transition duration-200 rounded-full hover:bg-white/10";
+
+
+            return (
+                <div className="w-full max-w-7xl mx-auto px-4 py-8 text-white animate-fadeInUp">
+                    <header className="flex flex-wrap gap-4 justify-between items-center mb-10 pb-6 border-b border-white/10">
+                        <h1 className="text-3xl font-bold">Dasbor, <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">{currentUser.email.split('@')[0]}</span></h1>
+                        <div className="flex items-center gap-4">
+                            <button onClick={openCreateModal} className={`flex items-center gap-2 font-semibold ${btnPrimary}`}><PlusIcon className="w-5 h-5" />Buat Catatan</button>
+                            <button onClick={logout} title="Keluar" className={iconButton}><LogOutIcon className="w-6 h-6" /></button>
+                        </div>
+                    </header>
+
+                    <Modal isOpen={isNoteModalOpen} onClose={closeModal}>
+                        <NoteForm {...{allUsers, setAllUsers, currentUser, setCurrentUser, editingNote, closeModal}}/>
+                    </Modal>
+                    
+                    <Modal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)}>
+                        <div className="p-8 text-white">
+                            <h3 className="text-xl font-bold mb-2">Bagikan Catatan</h3>
+                            <p className="text-gray-300 mb-4">Tautan ini mandiri dan dapat dibuka oleh siapa saja.</p>
+                            <div className="flex items-center gap-2 bg-black/30 p-2 rounded-lg border border-white/10">
+                                <input type="text" value={shareLink} readOnly className="flex-grow bg-transparent outline-none text-sm px-2"/>
+                                <button onClick={handleCopy} className="px-4 py-2 text-sm font-semibold text-white bg-violet-600 rounded-md hover:bg-violet-700 transition flex items-center gap-2">
+                                    {copied ? <CheckIcon className="w-4 h-4"/> : <CopyIcon className="w-4 h-4"/>}
+                                    {copied ? 'Tersalin' : 'Salin'}
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
+
+                    {currentUser.notes.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {currentUser.notes.map(note => <NoteCard key={note.id} {...{note, onEdit: openEditModal, onDelete: handleDeleteNote, onShare: handleShare}}/>)}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 border-2 border-dashed border-white/10 rounded-xl mt-10">
+                            <h3 className="text-xl font-semibold text-gray-300">Anda belum memiliki catatan.</h3>
+                            <p className="text-gray-400 mt-2">Klik "Buat Catatan" untuk memulai perjalanan Anda.</p>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        
+        const SharePage = () => {
+            const { data } = useParams();
+            const [note, setNote] = useState(null);
+            const [error, setError] = useState(null);
+            const navigate = useNavigate();
+
+            useEffect(() => {
+                if (!data) return setError("Tautan tidak valid.");
+                try {
+                    const decodedNote = JSON.parse(decodeURIComponent(escape(atob(data))));
+                    setNote(decodedNote);
+                } catch(e) {
+                    console.error("Share page decoding error:", e);
+                    setError("Gagal memuat catatan dari tautan ini. Format tidak valid.");
+                }
+            }, [data]);
+            
+            const renderContent = () => {
+                if (!note) return null;
+                const markdownStyles = {
+                    h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-white mb-4" {...props} />,
+                    h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-white mb-3" {...props} />,
+                    p: ({node, ...props}) => <p className="text-gray-300 mb-4 leading-relaxed" {...props} />,
+                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 text-gray-300 space-y-2" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 text-gray-300 space-y-2" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
+                    a: ({node, ...props}) => <a className="text-violet-400 hover:underline" target="_blank" {...props} />,
+                    pre: ({node, ...props}) => <pre className="bg-black/30 p-4 rounded-lg overflow-x-auto text-sm my-4" {...props} />,
+                    code: ({node, ...props}) => <code className="font-mono text-sm bg-black/20 px-1 py-0.5 rounded" {...props} />,
+                }
+                switch (note.syntax) {
+                    case 'code': return <pre className="bg-black/30 text-white p-4 rounded-lg overflow-x-auto text-sm whitespace-pre-wrap"><code>{note.content}</code></pre>;
+                    case 'link': return <a href={note.content} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline break-all text-lg">{note.content}</a>;
+                    default: return <ReactMarkdown components={markdownStyles}>{note.content}</ReactMarkdown>;
+                }
+            };
+            
+            const btnPrimary = "bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-violet-500 transition transform active:scale-95 shadow-lg shadow-violet-900/40";
+
+
+            if (error) return <div className="flex justify-center items-center h-screen text-center text-red-400 font-bold text-xl p-4">{error}</div>;
+            if (!note) return <div className="flex justify-center items-center h-screen"><LoaderIcon className="w-8 h-8 text-violet-500 animate-spin" /></div>;
+
+            return (
+                <div className="flex flex-col items-center min-h-screen p-4 py-12 md:py-20 text-white animate-fadeIn">
+                    <div className="w-full max-w-4xl glass-pane rounded-2xl">
+                        <div className="p-8 md:p-12">
+                            <h1 className="text-3xl md:text-4xl font-extrabold mb-4 break-words">{note.title}</h1>
+                            <p className="text-sm text-gray-400 mb-6 border-b border-white/10 pb-4">Dibuat pada: {new Date(note.createdAt).toLocaleString()}</p>
+                            <div className="prose prose-invert max-w-none">{renderContent()}</div>
+                        </div>
+                    </div>
+                    <div className="mt-8 flex flex-col items-center gap-4">
+                        <button onClick={() => navigate("/")} className={`${btnPrimary} w-full max-w-xs`}>Buat Catatan Aman Anda Sendiri</button>
+                        <button onClick={() => navigate("/")} className="text-gray-400 hover:text-white transition flex items-center gap-1"><ChevronLeftIcon className="w-4 h-4"/>Kembali</button>
+                    </div>
+                </div>
+            );
+        };
+        
+        const HomePage = ({ login, register }) => {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [confirmPassword, setConfirmPassword] = useState('');
+            const { showToast } = useToast();
+            const navigate = useNavigate();
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!email.trim() || !password.trim()) return showToast("Email dan kata sandi wajib diisi.", "error");
+
+                if (isLogin) {
+                    if (login(email, password)) {
+                        showToast(`Selamat datang kembali!`, 'success');
+                        navigate('/dashboard');
+                    } else {
+                        showToast('Email atau kata sandi salah.', 'error');
+                    }
+                } else {
+                    if (password.length < 3) return showToast("Kata sandi minimal 3 karakter.", 'error');
+                    if (password !== confirmPassword) return showToast("Konfirmasi kata sandi tidak cocok.", 'error');
+                    if (register(email, password)) {
+                        showToast('Pendaftaran berhasil! Silakan masuk.', 'success');
+                        setIsLogin(true); setPassword(''); setConfirmPassword('');
+                    } else {
+                        showToast('Email sudah terdaftar.', 'error');
+                    }
+                }
+            };
+            
+            const btnPrimary = "bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-violet-500 transition transform active:scale-95 shadow-lg shadow-violet-900/40";
+
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen p-4 animate-fadeInUp">
+                    <div className="w-full max-w-md text-center mb-10">
+                        <h1 className="text-6xl md:text-7xl font-black bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent tracking-tighter">OKIENAK</h1>
+                        <p className="mt-2 text-lg text-gray-300">Secure Notes powered by Strategic Intelligence.</p>
+                    </div>
+                    <div className="w-full max-w-sm glass-pane p-8 rounded-2xl">
+                        <div className="flex border-b border-white/10 mb-6">
+                            <button onClick={() => setIsLogin(true)} className={`flex-1 pb-3 font-semibold transition ${isLogin ? 'text-white border-b-2 border-violet-500' : 'text-gray-400'}`}>Masuk</button>
+                            <button onClick={() => setIsLogin(false)} className={`flex-1 pb-3 font-semibold transition ${!isLogin ? 'text-white border-b-2 border-violet-500' : 'text-gray-400'}`}>Daftar</button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <input type="email" placeholder="Alamat Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full px-4 py-3 rounded-lg input-style placeholder:text-gray-500" />
+                            <PasswordInput placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} required />
+                            {!isLogin && <PasswordInput placeholder="Konfirmasi Kata Sandi" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />}
+                            <button type="submit" className={`${btnPrimary} w-full`}>{isLogin ? 'Masuk' : 'Daftar'}</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- SECTION: MAIN APP COMPONENT ---
+
+        const App = () => {
+            const [allUsers, setAllUsers] = useLocalStorage('okienak_users_v3', []);
+            const [currentUser, setCurrentUser] = useLocalStorage('okienak_current_user_v3', null);
+            const { showToast } = useToast() || {}; // Fallback in case context is not ready
+
+            useEffect(() => {
+                if (typeof setAllUsers !== 'function') return;
+                setAllUsers(prev => {
+                    let users = Array.isArray(prev) ? prev : [];
+                    if (!users.some(u => u.email === ADMIN_EMAIL)) {
+                        return [...users, { email: ADMIN_EMAIL, password: ADMIN_DEFAULT_PASS, notes: [] }];
+                    }
+                    return users;
+                });
+            }, [setAllUsers]);
+
+            const login = (email, pass) => {
+                const user = allUsers.find(u => u.email === email && u.password === pass);
+                if (user) { setCurrentUser(user); return true; }
+                return false;
+            };
+
+            const register = (email, pass) => {
+                if (allUsers.some(u => u.email === email)) return false;
+                setAllUsers(prev => [...prev, { email, password: pass, notes: [] }]);
+                return true;
+            };
+            
+            const logout = () => {
+                if (showToast) showToast("Anda telah keluar.", "info");
+                setCurrentUser(null);
+            };
+
+            const ProtectedRoute = ({ children }) => {
+                const navigate = useNavigate();
+                useEffect(() => {
+                    if (!currentUser) navigate('/');
+                }, [currentUser, navigate]);
+                return currentUser ? children : null;
+            };
+            
+            const AuthRoute = ({ children }) => {
+                const navigate = useNavigate();
+                useEffect(() => {
+                    if (currentUser) navigate('/dashboard');
+                }, [currentUser, navigate]);
+                return !currentUser ? children : null;
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <main className="flex-grow">
+                        <HashRouter>
+                            <Routes>
+                                <Route path="/view/:data" element={<SharePage />} />
+                                <Route path="/dashboard" element={
+                                    <ProtectedRoute>
+                                        {currentUser && <DashboardPage {...{allUsers, setAllUsers, currentUser, setCurrentUser, logout}} />}
+                                    </ProtectedRoute>
+                                } />
+                                <Route path="/" element={
+                                    <AuthRoute>
+                                        <HomePage {...{login, register}} />
+                                    </AuthRoute>
+                                } />
+                            </Routes>
+                        </HashRouter>
+                    </main>
+                </div>
+            );
+        };
+        
+        const AppWrapper = () => (
+            <ToastProvider>
+                <App />
+            </ToastProvider>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AppWrapper />);
+
+    </script>
+</body>
+</html>
